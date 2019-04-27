@@ -45,15 +45,17 @@
 <p>putting it all together</p>
 <p><img src="other/compound.svg" /></p>
 <h2 id="recipe">recipe</h2>
-<pre><code>stack build --test --exec &quot;$(stack path --local-install-root)/bin/chart-svg&quot; --exec &quot;$(stack path --local-bin)/pandoc -f markdown -i other/readme_.md -t html -o index.html --filter pandoc-include --mathjax&quot; --file-watch --ghc-options -freverse-errors</code></pre>
-<pre><code>stack build --test --exec &quot;$(stack path --local-install-root)/bin/chart-hud&quot; --exec &quot;$(stack path --local-bin)/pandoc -f markdown+lhs -i app/hud.lhs -t html -o hud.html --filter pandoc-include --mathjax&quot; --file-watch --ghc-options -freverse-errors
+<pre><code>stack build --test --exec &quot;$(stack path --local-install-root)/bin/chart-svg&quot; --exec &quot;$(stack path --local-bin)/pandoc -f markdown -i other/readme_.md -t html -o index.html --filter pandoc-include --mathjax&quot; --file-watch --ghc-options -freverse-errors
+
+stack build --test --exec &quot;$(stack path --local-install-root)/bin/chart-svg&quot; --exec &quot;$(stack path --local-bin)/pandoc -f markdown -i other/readme_.md -t markdown -o readme.md --filter pandoc-include --mathjax&quot; --file-watch --ghc-options -freverse-errors
+
+stack build --test --exec &quot;$(stack path --local-install-root)/bin/chart-hud&quot; --exec &quot;$(stack path --local-bin)/pandoc -f markdown+lhs -i app/hud.lhs -t html -o hud.html --filter pandoc-include --mathjax&quot; --file-watch --ghc-options -freverse-errors
 
 stack build --exec &quot;$(stack path --local-install-root)/bin/style-page&quot; --file-watch</code></pre>
 <h2 id="reference">reference</h2>
 <ul class="incremental">
 <li><a href="https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial">MDN svg</a></li>
 <li><a href="https://www.w3.org/TR/SVG2/text.html#TextAnchoringProperties">SVG2</a></li>
-<li><a href="https://hackage.haskell.org/package/plot-light-0.4.3/docs/src/Graphics.Rendering.Plot.Light.Internal.html#text">plot-light</a></li>
 <li><a href="http://hackage.haskell.org/package/svg-tree-0.6.2.2/docs/Graphics-Svg-Types.html#v:documentLocation">svg-tree</a></li>
 <li><a href="http://hackage.haskell.org/package/JuicyPixels-3.2.9.5/docs/Codec-Picture-Types.html#t:PixelRGBA8">JuicyPixels</a></li>
 </ul>

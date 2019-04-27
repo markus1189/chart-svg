@@ -17,12 +17,11 @@ module Chart.Page
 import Chart.Core
 import Chart.Hud
 import Chart.Svg
-import Chart.Spot
+import Chart.Numeric
 import Control.Category (id)
 import Control.Lens
 import Data.Attoparsec.Text
 import Data.Generics.Labels ()
-import Graphics.Svg.Types (TextAnchor(..))
 import Lucid
 import Protolude hiding ((<<*>>))
 import Web.Page
@@ -34,7 +33,7 @@ import Data.Biapplicative
 repChart :: (Monad m) => Chart a -> SharedRep m (Chart a)
 repChart c = do
   ann <- repAnnotation (c ^. #annotation)
-  pure $ Chart ann (c ^. #drawatts) (c ^. #spots)
+  pure $ Chart ann (c ^. #spots)
 
 repAnnotation :: (Monad m) => Annotation -> SharedRep m Annotation
 repAnnotation ann = SharedRep $ do
@@ -87,9 +86,9 @@ repAnnotation ann = SharedRep $ do
 repLineStyle :: (Monad m) => LineStyle -> SharedRep m LineStyle
 repLineStyle s = do
   w <- slider "width" 0.000 0.2 0.001 (s ^. #width)
-  c <- colorPicker "color" (s ^. #color)
+  c <- colorPicker "color" (uncolor $ s ^. #color)
   o <- slider "opacity" 0 1 0.1 (s ^. #opacity)
-  pure $ LineStyle w c o
+  pure $ LineStyle w (Color' c) o
 
 repGlyphShape :: (Monad m) => GlyphShape -> SharedRep m GlyphShape
 repGlyphShape d = toGlyph <$>
@@ -105,39 +104,43 @@ repGlyphShape d = toGlyph <$>
   , "Smiley Face"
   ] (fromGlyph d)
 
+
+
 repGlyphStyle :: (Monad m) => GlyphStyle -> SharedRep m GlyphStyle
 repGlyphStyle gs = first (cardify [style_ "width: 10 rem;"] mempty (Just "Glyph Style")) $ do
   sh <- repGlyphShape (gs ^. #shape)
   sz <- slider "Size" 0 0.2 0.001 (gs ^. #size)
   gc <- colorPicker "Color"
-    (gs ^. #color)
+    (uncolor $ gs ^. #color)
   go <- slider "Opacity" 0 1 0.1 (gs ^. #opacity)
   bsz <- slider "Border Size" 0 0.02 0.001 (gs ^. #borderSize)
-  gbc <- colorPicker "Border Color" (gs ^. #borderColor)
+  gbc <- colorPicker "Border Color" (uncolor $ gs ^. #borderColor)
   gbo <- slider "Border Opacity" 0 1 0.1 (gs ^. #borderOpacity)
-  pure (GlyphStyle sz gc go gbc gbo bsz sh)
+  ro <- repRotation (gs ^. #rotation)
+  tr <- repTranslation (gs ^. #translation)
+  pure (GlyphStyle sz (Color' gc) go (Color' gbc) gbo bsz sh ro tr)
 
 repTitle :: (Monad m) => Text -> Title Double -> SharedRep m (Title Double)
 repTitle txt cfg = do
   ttext <- textbox "text" txt
   ts <- repTextStyle (cfg^. #style)
   tp <- repPlace (cfg ^. #place)
-  ta <- repAnchor (cfg ^. #align)
+  ta <- repAlignH (cfg ^. #alignH)
   b <- slider "buffer" 0 0.2 0.01 (cfg ^. #buff)
   pure $ Title ttext ts tp ta b
 
 repTextStyle :: (Monad m) => TextStyle -> SharedRep m TextStyle
 repTextStyle s = do
   ts <- slider "size" 0.02 0.3 0.01 (s ^. #size)
-  tc <- colorPicker "color" (s ^. #color)
+  tc <- colorPicker "color" (uncolor $ s ^. #color)
   to' <- slider "opacity" 0 1 0.1 (s ^. #opacity)
-  ta <- repAnchor (s ^. #alignH)
+  ta <- repAlignH (s ^. #alignH)
   th <- slider "hsize" 0.2 1 0.05 (s ^. #hsize)
   tv <- slider "vsize" 0.5 2 0.05 (s ^. #vsize)
   tn <- slider "nudge1" (-0.5) 0.5 0.05 (s ^. #nudge1)
-  trc <- maybeRep "rotation" (maybe False  (const True) (s ^. #rotation))
-    (slider "rotation" (-180) 180 10 (maybe 0 identity (s ^. #rotation)))
-  pure $ TextStyle ts tc to' ta th tv tn trc
+  tro <- repRotation (s ^. #rotation)
+  ttr <- repTranslation (s ^. #translation)
+  pure $ TextStyle ts (Color' tc) to' ta th tv tn tro ttr
 
 repPlace :: (Show a, Monad m) => Place a -> SharedRep m (Place a)
 repPlace =
@@ -148,28 +151,30 @@ repPlace =
   , "Right"
   ]
 
-repAnchor :: (Monad m) => TextAnchor -> SharedRep m TextAnchor
-repAnchor =
+repAlignH :: (Monad m) => AlignH -> SharedRep m AlignH
+repAlignH =
     dropdown
-    (toTextAnchor <$> takeText)
-    anchorToString
-    "Anchor"
-    (fromTextAnchor <$> [TextAnchorStart, TextAnchorMiddle, TextAnchorEnd])
+    (textToAlignH <$> takeText)
+    show
+    "Horizontal Alignment"
+    (show <$> [StartH, MiddleH, EndH])
 
 repCanvasConfig :: (Monad m) => CanvasConfig -> SharedRep m CanvasConfig
 repCanvasConfig cfg = do
-  canvasc <- colorPicker "Canvas Color" (cfg ^. #color)
+  canvasc <- colorPicker "Canvas Color" (uncolor $ cfg ^. #color)
   canvaso <- slider "Canvas Opacity" 0 0.2 0.01 (cfg ^. #opacity)
-  pure $ CanvasConfig canvasc canvaso
+  pure $ CanvasConfig (Color' canvasc) canvaso
 
 repRectStyle :: (Monad m) => RectStyle -> SharedRep m RectStyle
 repRectStyle s = do
   bs <- slider "border size" 0.02 0.3 0.01 (s ^. #borderSize)
-  bc <- colorPicker "border color" (s ^. #borderColor)
+  bc <- colorPicker "border color" (uncolor $ s ^. #borderColor)
   bo <- slider "border opacity" 0 1 0.1 (s ^. #borderOpacity)
-  c <- colorPicker "color" (s ^. #color)
+  c <- colorPicker "color" (uncolor $ s ^. #color)
   o <- slider "opacity" 0 1 0.1 (s ^. #opacity)
-  pure $ RectStyle bs bc bo c o
+  ro <- repRotation (s ^. #rotation)
+  tr <- repTranslation (s ^. #translation)
+  pure $ RectStyle bs (Color' bc) bo (Color' c) o ro tr
 
 repBar :: (Monad m) => Bar Double -> SharedRep m (Bar Double)
 repBar cfg = do
@@ -216,8 +221,8 @@ repChartSvgStyle s = do
   fr <- maybeRep "frame" (maybe False (const True) (s ^. #chartFrame))
     (repRectStyle (maybe defaultRectStyle id (s ^. #chartFrame)))
   orig <- maybeRep "origin" (maybe False (const True) (s ^. #orig))
-    ((\(os,c) -> (,) <$> slider "size" 0 0.1 0.001 os <*> colorPicker "color" c) (maybe (0.04, red) id (s ^. #orig)))
-  pure $ ChartSvgStyle x y a op' ip fr orig
+    ((\(os,c) -> (,) <$> slider "size" 0 0.1 0.001 os <*> colorPicker "color" (uncolor c)) (maybe (0.04, red) id (s ^. #orig)))
+  pure $ ChartSvgStyle x y a op' ip fr (second Color' <$> orig)
 
 repData :: (Monad m) => SharedRep m [Spot Double]
 repData = do
@@ -226,9 +231,9 @@ repData = do
     , "line"
     ] "sin"
   pure (case a of
-          "sin" -> SpotPoint <$> dataXY sin (Range 0 (2*pi)) 30
-          "line" -> SpotPoint <$> dataXY sin (Range 0 (2*pi)) 30
-          _ -> SpotPoint <$> dataXY sin (Range 0 (2*pi)) 30
+          "sin" -> Point' <$> dataXY sin (Range 0 (2*pi)) 30
+          "line" -> Point' <$> dataXY sin (Range 0 (2*pi)) 30
+          _ -> Point' <$> dataXY sin (Range 0 (2*pi)) 30
        )
 
 repTickFormat :: (Monad m) => TickFormat -> SharedRep m TickFormat
@@ -322,3 +327,14 @@ repTick cfg = do
   tb <- slider "text buffer" 0 0.2 0.01 (cfg ^. #textBuff)
   ts' <- repTickStyle (cfg ^. #tstyle)
   pure $ Tick p gs ts b tb ts'
+
+
+repPair :: (Monad m) => Maybe Text -> Pair Double -> SharedRep m (Pair Double)
+repPair label (Pair x y) = first (maybe id (\h -> (<>) (toHtml h)) label) $ Pair <$> slider "x" -1 1 0.01 x <*> slider "y" -1 1 0.01 y
+
+repRotation :: (Monad m) => Maybe (Double, Pair Double) -> SharedRep m (Maybe (Double, Pair Double))
+repRotation a = maybeRep "" (isJust a) $ (,) <$> slider "rotation" -180 180 1 (maybe 0 fst a) <*> repPair (Just "origin") (maybe (Pair 0 0 ) snd a)
+
+repTranslation :: (Monad m) => Maybe (Pair Double) -> SharedRep m (Maybe (Pair Double))
+repTranslation p = maybeRep "" (isJust p) $ repPair (Just "translation") (maybe (Pair 0 0) id p)
+

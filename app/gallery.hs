@@ -67,7 +67,7 @@ tri2 a b s gap bs txts =
   , Point (s * fromIntegral a / 2 - gap * ((fromIntegral b) ** (2.0 :: Double) / (fromIntegral h) ** (2 :: Double))) (s * fromIntegral b / 2 + gap * ((fromIntegral a) ** (2.0 :: Double) / (fromIntegral h) ** (2 :: Double)))
   ]
   [ ts
-  , ts & #alignH .~ TextAnchorStart
+  , ts & #alignH .~ AlignHStart
   , ts & #rotation .~ Just (-(atan (fromIntegral b/fromIntegral a)) * (180 / pi))
   ]
   where
@@ -103,7 +103,7 @@ tri3 a b s gap bs txts =
   , Point (s * fromIntegral a / 2 - gap * ((fromIntegral b) ** (2.0 :: Double) / (fromIntegral h) ** (2 :: Double))) (s * fromIntegral b / 2 + gap * ((fromIntegral a) ** (2.0 :: Double) / (fromIntegral h) ** (2 :: Double)))
   ]
   [ ts
-  , ts & #alignH .~ TextAnchorStart
+  , ts & #alignH .~ AlignHStart
   , ts & #rotation .~ Just (-(atan (fromIntegral b/fromIntegral a)) * (180 / pi))
   ]
   where

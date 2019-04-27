@@ -12,7 +12,7 @@
 import Chart.Core
 import Chart.Hud
 import Chart.Page
-import Chart.Spot
+import Chart.Numeric
 import Chart.Svg
 import Control.Category (id)
 import Control.Lens
@@ -50,7 +50,7 @@ repMain cscfg ccfg hcfg =
     d = repData
     mmap cs' ann' d' h' =
       renderChartWith cs' h'
-        [Chart ann' mempty d']
+        [Chart ann' d']
     hmap cs' ann' d' h' =
       accordion_ "acca" (Just "Chart Configuration")
       [ ("Chart Svg Stylings", cs')
@@ -63,18 +63,18 @@ chartSvgTest :: GlyphStyle -> HudConfig Double -> ChartSvg Double
 chartSvgTest gs cfg =
   hud cfg
   (aspect 1.5)
-  [ Chart (GlyphA gs) mempty
-    (SpotPoint <$> dataXY sin (Range 0 (2*pi)) 30)
+  [ Chart (GlyphA gs)
+    (Point' <$> dataXY sin (Range 0 (2*pi)) 30)
   ]
 
 chartTest :: Chart Double
-chartTest = Chart (GlyphA defaultGlyphStyle) mempty
-    (SpotPoint <$> dataXY sin (Range 0 (2*pi)) 30)
+chartTest = Chart (GlyphA defaultGlyphStyle)
+    (Point' <$> dataXY sin (Range 0 (2*pi)) 30)
 
 toChart' :: GlyphStyle -> Chart Double
 toChart' gs =
-  Chart (GlyphA gs) mempty
-  (SpotPoint <$> dataXY sin (Range 0 (2*pi)) 30)
+  Chart (GlyphA gs)
+  (Point' <$> dataXY sin (Range 0 (2*pi)) 30)
 
 toChartSvg' :: Chart Double -> HudConfig Double -> ChartSvg Double
 toChartSvg' c h = hud h (aspect 1.5) [c]
@@ -106,7 +106,7 @@ initChartRender e r =
 
 renderChart :: Double -> Double -> ChartSvg Double -> Text
 renderChart x y =
-  xmlToText . renderXml (Point x y)
+  xmlToText . renderXml (Pair x y)
 
 main :: IO ()
 main =

@@ -7,21 +7,30 @@ Status](https://travis-ci.org/tonyday567/chart-svg.svg)](https://travis-ci.org/t
 [![lts](https://www.stackage.org/package/chart-svg/badge/lts)](http://stackage.org/lts/package/chart-svg)
 [![nightly](https://www.stackage.org/package/chart-svg/badge/nightly)](http://stackage.org/nightly/package/chart-svg)
 
-try `stack build --exec "$(stack path --local-install-root)/bin/style-page" --file-watch` for a style builder.
+Try
+`stack build --exec "$(stack path --local-install-root)/bin/style-page" --file-watch`
+for an interactive style builder.
 
 test svgs
 =========
 
-rects
------
+mempty
+------
 
-zero
+`render (Point (200.0 :: Double) 200.0) mempty` produces the following
+svg text:
 
-![](other/zero.svg)
+    <svg viewBox="-0.5 -0.5 1.0 1.0" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="200.0" height="200.0" />
 
-one'
+one
+---
 
-![](other/one'.svg)
+`chartSvg (one :: ViewBox Double) [Chart (RectA defaultRectStyle) mempty [one]]`
+
+![](other/one.svg)
+
+ChartSvg transforms
+-------------------
 
 rotate
 
@@ -31,98 +40,89 @@ translate
 
 ![](other/translateOne.svg)
 
-rectChart\_
+rectangle
+---------
 
-![](other/rectChart_Example.svg)
+![](other/rectChart.svg)
 
-rectMulti\_
+![](other/rectCharts.svg)
 
-![](other/rectMulti_Example.svg)
-
-pixelChart\_
-
-![](other/pixelExample.svg)
+![](other/pixel.svg)
 
 text
 ----
 
-text
+![](other/textChart.svg)
 
-![](other/textExample.svg)
+text chart
 
-textChart\_
-
-![](other/textChart_Example.svg)
+![](other/textsChart.svg)
 
 boundText
 
 ![](other/boundText.svg)
 
-label + bounding box
+rotated label
 
-![](other/labelExample.svg)
+![](other/label.svg)
 
 glyphs
 ------
 
 circle
 
-![](other/circleExample.svg)
+![](other/circle.svg)
 
 glyphs
 
-![](other/glyphsExample.svg)
+![](other/glyphs.svg)
 
 smiley
 
-![](other/smileyExample.svg)
+![](other/smiley.svg)
 
 glyph
 
-![](other/glyphExample.svg)
+![](other/glyphsChart.svg)
 
 line charts
 -----------
 
 line
 
-![](other/lineExample.svg)
+![](other/lines.svg)
 
 gline
 
-![](other/glineExample.svg)
+![](other/glines.svg)
 
 labelled glyph
 --------------
 
 lglyph
 
-![](other/lglyphExample.svg)
+![](other/lglyph.svg)
 
 putting it all together
 
-![](other/compoundExample.svg)
+![](other/compound.svg)
 
 recipe
 ------
-```
-stack build --test --exec "$(stack path --local-install-root)/bin/chart-svg" --exec "$(stack path --local-bin)/pandoc -f markdown -i other/readme_.md -t html -o index.html --filter pandoc-include --mathjax" --file-watch --ghc-options -freverse-errors
 
-stack build --exec "$(stack path --local-install-root)/bin/style-page" --file-watch
-```
+    stack build --test --exec "$(stack path --local-install-root)/bin/chart-svg" --exec "$(stack path --local-bin)/pandoc -f markdown -i other/readme_.md -t html -o index.html --filter pandoc-include --mathjax" --file-watch --ghc-options -freverse-errors
+
+    stack build --test --exec "$(stack path --local-install-root)/bin/chart-svg" --exec "$(stack path --local-bin)/pandoc -f markdown -i other/readme_.md -t markdown -o readme.md --filter pandoc-include --mathjax" --file-watch --ghc-options -freverse-errors
+
+    stack build --test --exec "$(stack path --local-install-root)/bin/chart-hud" --exec "$(stack path --local-bin)/pandoc -f markdown+lhs -i app/hud.lhs -t html -o hud.html --filter pandoc-include --mathjax" --file-watch --ghc-options -freverse-errors
+
+    stack build --exec "$(stack path --local-install-root)/bin/style-page" --file-watch
 
 reference
 ---------
 
--   [ghc
-    options](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/flags.html#flag-reference)
--   [pragmas](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/lang.html)
--   [libraries](https://www.stackage.org/)
--   [hoogle](https://www.stackage.org/package/hoogle)
--   [doctest](https://www.stackage.org/package/doctest)
 -   [MDN svg](https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial)
--   [SVG2](https://www.w3.org/TR/SVG2/)
--   [lucid](http://hackage.haskell.org/package/lucid)
+-   [SVG2](https://www.w3.org/TR/SVG2/text.html#TextAnchoringProperties)
+-   [plot-light](https://hackage.haskell.org/package/plot-light-0.4.3/docs/src/Graphics.Rendering.Plot.Light.Internal.html#text)
 -   [svg-tree](http://hackage.haskell.org/package/svg-tree-0.6.2.2/docs/Graphics-Svg-Types.html#v:documentLocation)
 -   [JuicyPixels](http://hackage.haskell.org/package/JuicyPixels-3.2.9.5/docs/Codec-Picture-Types.html#t:PixelRGBA8)
-

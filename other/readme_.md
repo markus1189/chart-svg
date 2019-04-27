@@ -108,9 +108,9 @@ recipe
 
 ```
 stack build --test --exec "$(stack path --local-install-root)/bin/chart-svg" --exec "$(stack path --local-bin)/pandoc -f markdown -i other/readme_.md -t html -o index.html --filter pandoc-include --mathjax" --file-watch --ghc-options -freverse-errors
-```
 
-```
+stack build --test --exec "$(stack path --local-install-root)/bin/chart-svg" --exec "$(stack path --local-bin)/pandoc -f markdown -i other/readme_.md -t markdown -o readme.md --filter pandoc-include --mathjax" --file-watch --ghc-options -freverse-errors
+
 stack build --test --exec "$(stack path --local-install-root)/bin/chart-hud" --exec "$(stack path --local-bin)/pandoc -f markdown+lhs -i app/hud.lhs -t html -o hud.html --filter pandoc-include --mathjax" --file-watch --ghc-options -freverse-errors
 
 stack build --exec "$(stack path --local-install-root)/bin/style-page" --file-watch
@@ -122,6 +122,5 @@ reference
 
 - [MDN svg](https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial)
 - [SVG2](https://www.w3.org/TR/SVG2/text.html#TextAnchoringProperties)
-- [plot-light](https://hackage.haskell.org/package/plot-light-0.4.3/docs/src/Graphics.Rendering.Plot.Light.Internal.html#text)
 - [svg-tree](http://hackage.haskell.org/package/svg-tree-0.6.2.2/docs/Graphics-Svg-Types.html#v:documentLocation)
 - [JuicyPixels](http://hackage.haskell.org/package/JuicyPixels-3.2.9.5/docs/Codec-Picture-Types.html#t:PixelRGBA8)
