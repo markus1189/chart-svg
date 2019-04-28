@@ -339,7 +339,7 @@ translateDA (Point x y) = mempty & transform .~ Just
 
 -- | Rotate a ChartSvg expanding the ViewBox as necessary.
 -- Multiple rotations will expand the bounding box conservatively.
-rotate :: (Chartable a, FromInteger a, TrigField a) => a -> ChartSvg a -> ChartSvg a
+rotate :: (Chartable a, TrigField a) => a -> ChartSvg a -> ChartSvg a
 rotate r (ChartSvg (ViewBox vb) c) = 
   ChartSvg
   (ViewBox $ rotateArea r vb)
@@ -361,7 +361,7 @@ data ScratchStyle = ScratchStyle
   , outerPad :: Double
   , innerPad :: Double
   , frame' :: ChartSvg Double -> ChartSvg Double
-  , maybeOrig :: Maybe (Double, PixelRGB8)
+  , maybeOrig :: Maybe (Double, Color)
   } deriving (Generic)
 
 defaultScratchStyle :: ScratchStyle
@@ -401,12 +401,6 @@ scratchWith s x =
     Nothing -> mempty
     Just (n,c) -> [showOriginWith n c]
 
-placedLabel :: (Chartable a) => Point a -> a -> Text.Text -> Chart a
-placedLabel p d t =
-  Chart (TextA defaultTextStyle [t])
-  (mempty <> translateDA p <> rotateDA d)
-  [zero]
-
 data ChartSvgStyle = ChartSvgStyle
   { sizex :: Double
   , sizey :: Double
@@ -414,7 +408,7 @@ data ChartSvgStyle = ChartSvgStyle
   , outerPad :: Maybe Double
   , innerPad :: Maybe Double
   , chartFrame :: Maybe RectStyle
-  , orig :: Maybe (Double, PixelRGB8)
+  , orig :: Maybe (Double, Color)
   } deriving (Generic)
 
 defaultChartSvgStyle :: ChartSvgStyle
@@ -423,3 +417,9 @@ defaultChartSvgStyle = ChartSvgStyle 600 400 1.5 (Just 1.05) (Just 1.05) (Just $
 renderChartSvg :: Double -> Double -> ChartSvg Double -> Text.Text
 renderChartSvg x y =
   xmlToText . renderXml (Point x y)
+
+placedLabel :: (Chartable a) => Point a -> a -> Text.Text -> Chart a
+placedLabel p d t =
+  Chart (TextA defaultTextStyle [t])
+  (mempty <> translateDA p <> rotateDA d)
+  [zero]

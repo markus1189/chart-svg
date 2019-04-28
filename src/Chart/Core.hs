@@ -11,6 +11,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Chart.Core
@@ -28,8 +29,8 @@ module Chart.Core
   , border
   , TextStyle(..)
   , defaultTextStyle
-  , anchorToString
-  , stringToAnchor
+  , AlignH(..)
+  , textToAlignH
   , GlyphStyle(..)
   , defaultGlyphStyle
   , GlyphShape(..)
@@ -50,8 +51,9 @@ module Chart.Core
   , styleBoxes
   , projectWithStyle
   , projectWithStyles
-  , showOrigin
   , showOriginWith
+  , Color(..)
+  , pattern Color
   , blue
   , grey
   , red
@@ -63,14 +65,16 @@ module Chart.Core
 
 import Codec.Picture.Types
 import Control.Exception
+import Control.Lens hiding (transform, (.=))
+import Data.Aeson
 import Data.Generics.Labels ()
 import Graphics.Svg as Svg hiding (Point, toPoint, Text)
-import Control.Lens hiding (transform)
 import NumHask.Data.Pair
 import NumHask.Prelude as P hiding (Group)
 import qualified Data.Text as Text
 import Data.List (zipWith3)
 import Chart.Spot
+import Lucid
 
 -- * Chart
 -- | A `Chart` consists of
@@ -87,6 +91,7 @@ data Chart a = Chart
 type Chartable a =
   ( ToRatio a
   , FromRatio a
+  , FromInteger a
   , Subtractive a
   , Field a
   , BoundedJoinSemiLattice a
@@ -100,6 +105,9 @@ data Annotation
   | GlyphA GlyphStyle
   | LineA LineStyle
   deriving (Eq, Show, Generic)
+
+instance ToJSON Annotation
+instance FromJSON Annotation
 
 annotationText :: Annotation -> Text
 annotationText (RectA _) = "RectA"
@@ -127,11 +135,14 @@ translateChart p c =
 -- | Rectangle styling
 data RectStyle = RectStyle
   { borderSize :: Double
-  , borderColor :: PixelRGB8
+  , borderColor :: Color
   , borderOpacity :: Double
-  , color :: PixelRGB8
+  , color :: Color
   , opacity :: Double
   } deriving (Show, Eq, Generic)
+
+instance ToJSON RectStyle
+instance FromJSON RectStyle
 
 -- | the official style
 defaultRectStyle :: RectStyle
@@ -141,13 +152,13 @@ daRect :: RectStyle -> DrawAttributes
 daRect o =
   mempty &
   (strokeWidth .~ Last (Just $ Num (fromRational $ o ^. #borderSize))) .
-  (strokeColor .~ Last (Just $ ColorRef (promotePixel $ o ^. #borderColor))) .
+  (strokeColor .~ Last (Just $ ColorRef (promotePixel $ uncolor $ o ^. #borderColor))) .
   (strokeOpacity .~ Just (fromRational $ o ^. #borderOpacity)) .
-  (fillColor .~ Last (Just $ ColorRef (promotePixel $ o ^. #color))) .
+  (fillColor .~ Last (Just $ ColorRef (promotePixel $ uncolor $ o ^. #color))) .
   (fillOpacity .~ Just (fromRational $ o ^. #opacity)) 
 
 -- | solid rectangle, no border
-blob :: PixelRGB8 -> Double -> RectStyle
+blob :: Color -> Double -> RectStyle
 blob = RectStyle zero black zero
 
 -- | clear and utrans rect
@@ -155,36 +166,48 @@ clear :: RectStyle
 clear = RectStyle zero black zero black zero
 
 -- | transparent rectangle, with border
-border :: Double -> PixelRGB8 -> Double -> RectStyle
+border :: Double -> Color -> Double -> RectStyle
 border s c o = RectStyle s c o black zero
 
 -- | Text styling
 data TextStyle = TextStyle
   { size :: Double
-  , color :: PixelRGB8
+  , color :: Color
   , opacity :: Double
-  , alignH :: TextAnchor 
+  , alignH :: AlignH
   , hsize :: Double
   , vsize :: Double
   , nudge1 :: Double
   , rotation :: Maybe Double
   } deriving (Show, Eq, Generic)
 
-anchorToString :: (IsString s) => TextAnchor -> s
-anchorToString TextAnchorMiddle = "Middle"
-anchorToString TextAnchorStart = "Start"
-anchorToString TextAnchorEnd = "End"
+instance ToJSON TextStyle
+instance FromJSON TextStyle
 
-stringToAnchor :: (Eq s, IsString s) => s -> TextAnchor
-stringToAnchor "Middle" = TextAnchorMiddle
-stringToAnchor "Start" = TextAnchorStart
-stringToAnchor "End" = TextAnchorEnd
-stringToAnchor _ = TextAnchorMiddle
+data AlignH = MiddleH | StartH | EndH deriving (Eq, Show, Generic)
+
+instance ToJSON AlignH
+instance FromJSON AlignH
+
+toTextAnchor :: AlignH -> TextAnchor
+toTextAnchor MiddleH = TextAnchorMiddle
+toTextAnchor StartH = TextAnchorStart
+toTextAnchor EndH = TextAnchorEnd
+
+textToAlignH :: Text -> AlignH
+textToAlignH "MiddleH" = MiddleH
+textToAlignH "StartH" = StartH
+textToAlignH "EndH" = EndH
+textToAlignH _ = MiddleH
+
+instance ToHtml AlignH where
+  toHtml = toHtml . (show :: AlignH -> Text)
+  toHtmlRaw = toHtmlRaw . (show :: AlignH -> Text)
 
 -- | the offical text style
 defaultTextStyle :: TextStyle
 defaultTextStyle =
-  TextStyle 0.08 grey 1.0 TextAnchorMiddle 0.45 1.1 (-0.25) Nothing
+  TextStyle 0.08 grey 1.0 MiddleH 0.45 1.1 (-0.25) Nothing
 
 -- | doesn't include the rotation text style which needs to be specified in the same layer as the placement.
 daText :: TextStyle -> DrawAttributes
@@ -193,9 +216,9 @@ daText o =
   (fontSize .~ Last (Just $ Num (o ^. #size))) .
   (strokeWidth .~ Last (Just $ Num 0)) .
   (strokeColor .~ Last (Just FillNone)) .
-  (fillColor .~ Last (Just $ ColorRef (promotePixel $ o ^. #color))) .
+  (fillColor .~ Last (Just $ ColorRef (promotePixel $ uncolor $ o ^. #color))) .
   (fillOpacity .~ Just (fromRational $ o ^. #opacity)) .
-  (textAnchor .~ Last (Just (o ^. #alignH)))
+  (textAnchor .~ Last (Just (toTextAnchor $ o ^. #alignH)))
   -- maybe identity (\x -> transform .~ Just [Rotate x Nothing]) (o ^. #rotation)
 
 -- | the extra area from text styling
@@ -223,13 +246,16 @@ styleBoxText o das t = fromRational <$> maybe flat (\r -> rotateArea r flat) (o 
 -- | Glyph styling
 data GlyphStyle = GlyphStyle
   { size :: Double -- ^ glyph radius
-  , color :: PixelRGB8 -- ^ fill color
+  , color :: Color -- ^ fill color
   , opacity :: Double
-  , borderColor :: PixelRGB8 -- ^ stroke color
+  , borderColor :: Color -- ^ stroke color
   , borderOpacity :: Double
   , borderSize :: Double -- ^ stroke width (adds a bit to the bounding box)
   , shape :: GlyphShape
   } deriving (Show, Eq, Generic)
+
+instance ToJSON GlyphStyle
+instance FromJSON GlyphStyle
 
 -- | the offical circle style
 defaultGlyphStyle :: GlyphStyle
@@ -247,6 +273,9 @@ data GlyphShape
   | HLineGlyph Double
   | SmileyGlyph
   deriving (Show, Eq, Generic)
+
+instance ToJSON GlyphShape
+instance FromJSON GlyphShape
 
 fromGlyphShape :: (IsString s) => GlyphShape -> (s, [Double])
 fromGlyphShape CircleGlyph = ("Circle", [])
@@ -291,10 +320,10 @@ fromGlyph sh =
   case sh of
     CircleGlyph -> "Circle"
     SquareGlyph -> "Square"
-    TriangleGlyph _ _ _ -> "Triangle"
+    TriangleGlyph{} -> "Triangle"
     EllipseGlyph _ -> "Ellipse"
     RectSharpGlyph _ -> "Rectangle"
-    RectRoundedGlyph _ _ _ -> "Rounded Rectangle"
+    RectRoundedGlyph{} -> "Rounded Rectangle"
     VLineGlyph _ -> "Verticle Line"
     HLineGlyph _ -> "Horizontal Line"
     SmileyGlyph -> "Smiley Face"
@@ -303,9 +332,9 @@ daGlyph :: GlyphStyle -> DrawAttributes
 daGlyph o =
   mempty &
   (strokeWidth .~ Last (Just $ Num (o ^. #borderSize))) .
-  (strokeColor .~ Last (Just $ ColorRef (promotePixel $ o ^. #borderColor))) .
+  (strokeColor .~ Last (Just $ ColorRef (promotePixel $ uncolor $ o ^. #borderColor))) .
   (strokeOpacity .~ Just (fromRational $ o ^. #borderOpacity)) .
-  (fillColor .~ Last (Just $ ColorRef (promotePixel $ o ^. #color))) .
+  (fillColor .~ Last (Just $ ColorRef (promotePixel $ uncolor $ o ^. #color))) .
   (fillOpacity .~ Just (fromRational $ o ^. #opacity))
 
 -- | the extra area from glyph styling
@@ -324,9 +353,12 @@ styleBoxGlyph s = fromRational <$> case sh of
 -- | line style
 data LineStyle = LineStyle
   { width :: Double
-  , color :: PixelRGB8
+  , color :: Color
   , opacity :: Double
   } deriving (Show, Eq, Generic)
+
+instance ToJSON LineStyle
+instance FromJSON LineStyle
 
 -- | the official default line style
 defaultLineStyle :: LineStyle
@@ -336,7 +368,7 @@ daLine :: LineStyle -> DrawAttributes
 daLine o =
   mempty &
   (strokeWidth .~ Last (Just $ Num (o ^. #width))) .
-  (strokeColor .~ Last (Just $ ColorRef (promotePixel $ o ^. #color))) .
+  (strokeColor .~ Last (Just $ ColorRef (promotePixel $ uncolor $ o ^. #color))) .
   (strokeOpacity .~ Just (fromRational $ o ^. #opacity)) .
   (fillColor .~ Last (Just FillNone))
 
@@ -398,7 +430,7 @@ projectWithStyles vb chs =
     xss = (\(Chart _ _ xs) -> xs) <$> chs
 
 -- | include a circle at the origin with size and color
-showOriginWith :: forall a. (Chartable a) => Double -> PixelRGB8 -> Chart a
+showOriginWith :: forall a. (Chartable a) => Double -> Color -> Chart a
 showOriginWith s c =
   Chart
   (GlyphA $
@@ -407,41 +439,53 @@ showOriginWith s c =
     #color .~ c $
     defaultGlyphStyle)
   mempty
-  [SP zero zero]
-
--- | include a red circle at the origin
-showOrigin :: (Chartable a) => Chart a
-showOrigin = showOriginWith 0.1 red
+  [zero]
 
 -- * color
+newtype Color = Color' { uncolor :: PixelRGB8 } deriving (Eq, Show, Generic)
+
+pattern Color :: Pixel8 -> Pixel8 -> Pixel8 -> Color
+pattern Color r g b = Color' (PixelRGB8 r g b)
+{-# COMPLETE Color #-}
+
+instance ToJSON Color where
+  toJSON (Color r g b) = object ["r" .= r, "g" .= g, "b" .= b]
+
+instance FromJSON Color where
+  parseJSON = withObject "Color" $ \v ->
+    Color <$>
+    v .: "r" <*>
+    v .: "g" <*>
+    v .: "b"
+
 -- | the official chart-unit blue
-blue :: PixelRGB8
-blue = PixelRGB8 93 165 218
+blue :: Color
+blue = Color 93 165 218
 
 -- | the official chart-unit grey
-grey :: PixelRGB8
-grey = PixelRGB8 102 102 102
+grey :: Color
+grey = Color 102 102 102
 
 -- | black
-black :: PixelRGB8
-black = PixelRGB8 0 0 0
+black :: Color
+black = Color 0 0 0
 
 -- | white
-white :: PixelRGB8
-white = PixelRGB8 255 255 255
+white :: Color
+white = Color 255 255 255
 
 -- | red
-red :: PixelRGB8
-red = PixelRGB8 255 0 0
+red :: Color
+red = Color 255 0 0
 
 -- | interpolate between two colors
-blend :: Double -> PixelRGB8 -> PixelRGB8 -> PixelRGB8
-blend c = mixWithAlpha f (f 0) where
+blend :: Double -> Color -> Color -> Color
+blend c (Color' p1) (Color' p2) = Color' $ mixWithAlpha f (f 0) p1 p2 where
   f _ x0 x1 = fromIntegral (round (fromIntegral x0 + c * (fromIntegral x1 - fromIntegral x0)) :: Integer)
 
 -- | create pixel data from a function on a Point
 pixelate :: (Lattice a, Field a, Subtractive a, FromInteger a) =>
-  (Point a -> Double) -> Area a -> Point Int -> PixelRGB8 -> PixelRGB8 -> [(Area a, PixelRGB8)]
+  (Point a -> Double) -> Area a -> Point Int -> Color -> Color -> [(Area a, Color)]
 pixelate f r g c0 c1 = (\(x,y) -> (x, blend y c0 c1)) <$> ps'
   where
     ps = areaF f r g

@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -22,18 +23,29 @@ import NumHask.Data.Pair
 import NumHask.Prelude as P hiding (Group)
 import NumHask.Data.Rect
 import NumHask.Analysis.Space
+import Data.Aeson
 
 -- * primitive Chart elements
 
 -- | a point on the xy-plane
 newtype Point a = Point'
   { getPair :: Pair a
-  } deriving (Eq, Show, Functor, Additive)
+  } deriving (Eq, Show, Functor, Additive, Generic)
 
 -- | pattern for Point x y
 pattern Point :: a -> a -> Point a
 pattern Point a b = Point' (Pair a b)
 {-# COMPLETE Point #-}
+
+instance (ToJSON a) => ToJSON (Point a) where
+  toJSON (Point x y) = object ["x" .= x, "y" .= y]
+
+instance (FromJSON a) => FromJSON (Point a) where
+  parseJSON = withObject "Point" $ \v ->
+    Point <$>
+    v .: "x" <*>
+    v .: "y"
+
 
 -- | a rectangular area on the xy-plane
 newtype Area a = Area'
@@ -44,6 +56,17 @@ newtype Area a = Area'
 pattern Area :: a -> a -> a -> a -> Area a
 pattern Area x z y w = Area' (Rect x z y w)
 {-# COMPLETE Area #-}
+
+instance (ToJSON a) => ToJSON (Area a) where
+  toJSON (Area x z y w) = object ["x" .= x, "z" .= z, "y" .= y, "w" .= w]
+
+instance (FromJSON a) => FromJSON (Area a) where
+  parseJSON = withObject "Area" $ \v ->
+    Area <$>
+    v .: "x" <*>
+    v .: "z" <*>
+    v .: "y" <*>
+    v .: "w"
 
 instance (Additive a) => Additive (Area a) where
   (Area x z y w) + (Area x' z' y' w') =
@@ -74,7 +97,10 @@ projectArea (Area' r0) (Area' r1) (Area' r2) = Area' $ projectRect r0 r1 r2
 data Spot a =
   SpotPoint (Point a) |
   SpotArea (Area a)
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show, Functor, Generic)
+
+instance (ToJSON a) => ToJSON (Spot a)
+instance (FromJSON a) => FromJSON (Spot a)
 
 instance (Additive a) => Additive (Spot a) where
   SpotPoint (Point x y) + SpotPoint (Point x' y') = SpotPoint (Point (x+x') (y+y'))

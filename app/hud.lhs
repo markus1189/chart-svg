@@ -25,13 +25,10 @@ Notes, testing and code for chart-svg develoment.
 import Chart.Svg
 import NumHask.Prelude
 import Control.Lens
-import Codec.Picture.Types
-
 import Data.Generics.Labels ()
 import Chart.Hud
 import Chart.Core
 import Chart.Spot
-import Graphics.Svg.Types as Svg hiding (Point, Text)
 
 \end{code}
 
@@ -70,12 +67,12 @@ gopts =
     defaultGlyphStyle
   , #borderSize .~ 0 $
     #size .~ 0.1 $
-    #color .~ PixelRGB8 100 30 30 $
+    #color .~ Color 100 30 30 $
     #shape .~ RectRoundedGlyph 1.5 0.01 (0.01 :: Double) $
     defaultGlyphStyle
   , #borderSize .~ 0 $
     #size .~ 0.1 $
-    #color .~ PixelRGB8 100 130 80 $
+    #color .~ Color 100 130 80 $
     #shape .~ EllipseGlyph 1.5 $
     defaultGlyphStyle
   ]
@@ -142,7 +139,7 @@ The canvas has to take into account the data area and the physical representatio
 
 \begin{code}
 
-can2 :: (ToRatio a, FromRatio a, Subtractive a, Field a, BoundedLattice a) => ViewBox a -> [Chart a] -> ChartSvg a
+can2 :: (Chartable a) => ViewBox a -> [Chart a] -> ChartSvg a
 can2 (ViewBox asp) cs =
   chartSvg_ (ViewBox asp') (cs' <> [canvas'])
   where
@@ -194,9 +191,9 @@ b1 =
 
 t1 :: [Title Double]
 t1 = (\a p -> (#place .~ p :: Title Double -> Title Double) $
-        #align .~ a $
+        #alignH .~ a $
         defaultTitle (show a <> ":" <> show p)) <$>
-      [TextAnchorStart, TextAnchorMiddle, TextAnchorEnd] <*>
+      [StartH, MiddleH, EndH] <*>
       [PlaceBottom, PlaceTop, PlaceLeft, PlaceRight]
 
 hud1 :: ViewBox Double -> [Chart Double] -> ChartSvg Double

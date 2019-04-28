@@ -32,6 +32,7 @@ library
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints
   build-depends:
       JuicyPixels
+    , aeson
     , attoparsec
     , base >=4.7 && <5
     , bifunctors

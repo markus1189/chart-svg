@@ -15,7 +15,6 @@
 import Chart.Core
 import Chart.Spot
 import Chart.Svg
-import Codec.Picture.Types
 import Control.Lens
 import Data.Generics.Labels()
 import Data.List ((!!))
@@ -26,8 +25,8 @@ import qualified Data.Text as Text
 
 ropts :: [RectStyle]
 ropts =
-  [ blob (PixelRGB8 93 165 218) 0.5
-  , blob (PixelRGB8 120 80 60) 0.5
+  [ blob (Color 93 165 218) 0.5
+  , blob (Color 120 80 60) 0.5
   ]
 
 rss :: [[Area Double]]
@@ -37,7 +36,7 @@ rss =
   ]
 
 rs :: RectStyle
-rs = RectStyle 0.1 (PixelRGB8 102 102 102) 0.5 (PixelRGB8 102 5 102) 0.5
+rs = RectStyle 0.1 (Color 102 102 102) 0.5 (Color 102 5 102) 0.5
 
 rs' :: RectStyle
 rs' = rs &  #opacity .~ 0.1 & #borderOpacity .~ 0.1
@@ -50,13 +49,13 @@ oneChart' = Chart (RectA rs') mempty [one]
 
 rotateOne :: ChartSvg Double
 rotateOne = defaultFrame $
-  chartSvg one [showOrigin] <>
+  chartSvg one [showOriginWith 0.05 red] <>
   chartSvg one [oneChart'] <>
   rotate 30 (chartSvg one [oneChart])
 
 translateOne :: ChartSvg Double
 translateOne = defaultFrame $
-  chartSvg one [showOrigin] <>
+  chartSvg one [showOriginWith 0.05 red] <>
   chartSvg one [oneChart'] <>
   translate (Point 1 1) (rotate 30 (chartSvg one [oneChart]))
 
@@ -145,7 +144,7 @@ gopts =
     defaultGlyphStyle
   , #borderSize .~ 0.001 $
     #size .~ 0.1 $
-    #color .~ PixelRGB8 100 30 30 $
+    #color .~ Color 100 30 30 $
     #shape .~ RectRoundedGlyph 1.5 0.01 (0.01 :: Double) $
     defaultGlyphStyle
   ]
@@ -194,9 +193,9 @@ lopts :: [LineStyle]
 lopts =
   zipWith (\w c -> defaultLineStyle & #color .~ c & #width .~ w)
   [0.015, 0.03, 0.01]
-  [ PixelRGB8 197 140 75
-  , PixelRGB8 60 127 43
-  , PixelRGB8 56 42 140
+  [ Color 197 140 75
+  , Color 60 127 43
+  , Color 56 42 140
   ]
 
 lines :: [Chart Double]
@@ -213,9 +212,9 @@ gopts3 =
      #shape .~ y $
      #size .~ 0.08 $
      defaultGlyphStyle)
-  [ PixelRGB8 120 67 30
-  , PixelRGB8 30 48 130
-  , PixelRGB8 60 60 60
+  [ Color 120 67 30
+  , Color 30 48 130
+  , Color 60 60 60
   ]
   [EllipseGlyph 1.5, SquareGlyph, CircleGlyph]
 

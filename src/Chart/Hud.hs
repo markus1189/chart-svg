@@ -20,7 +20,6 @@ module Chart.Hud where
 import Chart.Core
 import Chart.Spot
 import Chart.Svg
-import Codec.Picture.Types
 import Control.Category (id)
 import Control.Lens
 import Data.Generics.Labels ()
@@ -49,7 +48,7 @@ layer (Hud h1) (Hud h2) =
           h1 vb s d <>
           h2 (ViewBox $ asp <> styleBoxes (h1 vb s d)) s d
 
-hudSvg :: (ToRatio a, FromRatio a, Subtractive a, Field a, BoundedLattice a) =>
+hudSvg :: (Chartable a) =>
   ViewBox a -> [Hud a] -> [Chart a] -> ChartSvg a
 hudSvg (ViewBox asp) hs cs =
   chartSvg_
@@ -62,7 +61,7 @@ hudSvg (ViewBox asp) hs cs =
     vbData = ViewBox $ toArea $ fold $ fold (spots <$> cs')
     xs = toArea $ fold $ fold (spots <$> cs)
 
-hudSvgWith :: (ToRatio a, FromRatio a, Subtractive a, Field a, BoundedLattice a) =>
+hudSvgWith :: (Chartable a) =>
   ViewBox a -> Area a -> [Hud a] -> [Chart a] -> ChartSvg a
 hudSvgWith vb@(ViewBox new) old hs cs =
   chartSvg_
@@ -148,10 +147,6 @@ bar b das = Hud $ \(ViewBox (Area x' z' y' w')) (ViewBox (Area x z y w)) _ -> (:
 bars :: (Chartable a) => [Bar a] -> DrawAttributes -> Hud a
 bars bs das = mconcat ((\b -> bar b das) <$> bs)
 
-instance ToHtml TextAnchor where
-  toHtml = toHtml . (show :: TextAnchor -> Text)
-  toHtmlRaw = toHtmlRaw . (show :: TextAnchor -> Text)
-
 toTextAnchor :: (Eq a, IsString a) => a -> TextAnchor
 toTextAnchor sh =
   case sh of
@@ -172,7 +167,7 @@ data Title a = Title
   { text :: P.Text
   , style :: TextStyle
   , place :: Place a
-  , align :: TextAnchor
+  , alignH :: AlignH
   , buff :: a
   } deriving (Show, Eq, Generic)
 
@@ -181,24 +176,24 @@ defaultTitle txt =
     Title
     txt
     ( #size .~ 0.12 $
-      #color .~ PixelRGB8 0 0 0 $
+      #color .~ Color 0 0 0 $
       defaultTextStyle)
     PlaceTop
-    TextAnchorMiddle
+    MiddleH
     0.04
 
 -- | Create a title for a chart. The logic used to work out placement is flawed due to being able to freely specify text rotation.  It works for specific rotations (Top, Bottom at 0, Left at 90, Right @ 270)
-title :: (Chartable a, FromInteger a) => Title a -> DrawAttributes -> Hud a
+title :: (Chartable a) => Title a -> DrawAttributes -> Hud a
 title t das =
   Hud $ \(ViewBox a) _ _ -> (:[]) $
     Chart (TextA style' [t ^. #text])
     (das <> translateDA (placePos a + alignPos a) <> rotateDA (rot :: Double)) [zero]
       where
         style'
-          | t ^. #align == TextAnchorStart =
-            #alignH .~ TextAnchorStart $ t ^. #style
-          | t ^. #align == TextAnchorEnd =
-            #alignH .~ TextAnchorEnd $ t ^. #style
+          | t ^. #alignH == StartH =
+            #alignH .~ StartH $ t ^. #style
+          | t ^. #alignH == EndH =
+            #alignH .~ EndH $ t ^. #style
           | otherwise = t ^. #style
         rot
           | t ^. #place == PlaceRight = 90.0
@@ -214,22 +209,22 @@ title t das =
           PlaceRight -> Point (z + (t ^. #buff)) ((y+w)/2.0)
           PlaceAbsolute p -> p
         alignPos (Area x z y w)
-          | t ^. #align == TextAnchorStart &&
+          | t ^. #alignH == StartH &&
             t ^. #place `elem` [PlaceTop, PlaceBottom] =
             Point ((x-z)/2.0) 0
-          | t ^. #align == TextAnchorStart &&
+          | t ^. #alignH == StartH &&
             t ^. #place `elem` [PlaceLeft] =
             Point 0 ((y-w)/2.0)
-          | t ^. #align == TextAnchorStart &&
+          | t ^. #alignH == StartH &&
             t ^. #place `elem` [PlaceRight] =
             Point 0 ((w-y)/2.0)
-          | t ^. #align == TextAnchorEnd &&
+          | t ^. #alignH == EndH &&
             t ^. #place `elem` [PlaceTop, PlaceBottom] =
             Point ((-x+z)/2.0) 0
-          | t ^. #align == TextAnchorEnd &&
+          | t ^. #alignH == EndH &&
             t ^. #place `elem` [PlaceLeft] =
             Point 0 ((-y+w)/2.0)
-          | t ^. #align == TextAnchorEnd &&
+          | t ^. #alignH == EndH &&
             t ^. #place `elem` [PlaceRight] =
             Point 0 ((y-w)/2.0)
           | otherwise = Point 0 0
@@ -307,7 +302,7 @@ getTickFormat (TickExact (tf, _)) = tf
 getTickFormat _ = TickFormatDefault
 
 -- | compute tick values and labels given options, ranges and formatting
-computeTicks :: (Epsilon a, RealFloat a, ExpField a, QuotientField a Integer, FromInteger a, Chartable a) => TickStyle a -> Range a -> Range a -> ([a], [P.Text])
+computeTicks :: (Epsilon a, RealFloat a, ExpField a, QuotientField a Integer, Chartable a) => TickStyle a -> Range a -> Range a -> ([a], [P.Text])
 computeTicks s asp r =
     case s of
       TickNone -> ([], [])
@@ -393,8 +388,8 @@ tick t das =
         ta s = case t ^. #place of
           PlaceBottom -> s
           PlaceTop -> s
-          PlaceLeft -> (#alignH .~ TextAnchorEnd :: TextStyle -> TextStyle) s
-          PlaceRight -> (#alignH .~ TextAnchorStart :: TextStyle -> TextStyle) s
+          PlaceLeft -> (#alignH .~ EndH) s
+          PlaceRight -> (#alignH .~ StartH) s
           PlaceAbsolute _ -> s
 
 -- | options for prettifying axis decorations
@@ -418,9 +413,9 @@ adjustTick (AutoOptions mrx ma mry ad) vb cs (t, das)
         case adjustSizeX > one of
           True ->
             ((case t ^. #place of
-                PlaceBottom -> #textStyle . #alignH .~ TextAnchorEnd
-                PlaceTop -> #textStyle . #alignH .~ TextAnchorStart
-                _ -> #textStyle . #alignH .~ TextAnchorEnd) $
+                PlaceBottom -> #textStyle . #alignH .~ EndH
+                PlaceTop -> #textStyle . #alignH .~ StartH
+                _ -> #textStyle . #alignH .~ EndH) $
              (#textStyle . #size %~ (/adjustSizeA)) $
              (#textStyle . #rotation .~ Just (-45)) t, das)
           False -> ((#textStyle . #size %~ (/adjustSizeA)) t, das)
@@ -447,7 +442,7 @@ adjustTick (AutoOptions mrx ma mry ad) vb cs (t, das)
     adjustSizeA = maybe one identity (maximum' [(maxHeight / fromRational (upper asp - lower asp)) / ma, one])
 
 data CanvasConfig = CanvasConfig
-  { color :: PixelRGB8
+  { color :: Color
   , opacity :: Double
   } deriving (Eq, Show, Generic)
 
