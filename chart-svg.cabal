@@ -26,6 +26,7 @@ library
     Chart.Spot
     Chart.Svg
     Chart.Page
+    Chart.Orphans
   hs-source-dirs:
       src
   default-extensions: NegativeLiterals NoImplicitPrelude OverloadedStrings UnicodeSyntax
