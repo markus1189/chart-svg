@@ -15,56 +15,54 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Chart.Core where
+module Chart.Orphans where
 
-import Control.Lens hiding ((.=))
+-- import Control.Lens hiding ((.=))
 import Data.Aeson
 import Data.Generics.Labels ()
 import qualified Graphics.Svg as Svg
+import qualified Graphics.Svg.CssTypes as CssSvg
 import NumHask.Prelude as P hiding (Group)
 import Codec.Picture
+import Chart.Core
+
+instance (ToJSON a) => ToJSON (Chart a)
+instance (FromJSON a) => FromJSON (Chart a)
 
 newtype DrawAtts = DrawAtts { unDA :: Svg.DrawAttributes } deriving (Eq, Show, Generic)
 
-instance ToJSON DrawAtts where
-  toJSON (DrawAtts da) =
-    object
-    [ "strokeWidth" .= (da ^. Svg.strokeWidth)
-    , "strokeColor" .= (da ^. Svg.strokeColor)
-    ]
+instance ToJSON DrawAtts
+instance ToJSON Svg.DrawAttributes
+instance ToJSON Svg.TextAnchor
+instance ToJSON Svg.FontStyle
+instance ToJSON Svg.Cap
+instance ToJSON Svg.LineJoin
+instance ToJSON Svg.Texture
+instance ToJSON Svg.Transformation
+instance ToJSON Svg.FillRule
+instance ToJSON Svg.ElementRef
+instance ToJSON CssSvg.Number
 
+instance FromJSON DrawAtts
+instance FromJSON Svg.DrawAttributes
+instance FromJSON Svg.TextAnchor
+instance FromJSON Svg.FontStyle
+instance FromJSON Svg.Cap
+instance FromJSON Svg.LineJoin
+instance FromJSON Svg.Texture
+instance FromJSON Svg.Transformation
+instance FromJSON Svg.FillRule
+instance FromJSON Svg.ElementRef
+instance FromJSON CssSvg.Number
 
-{-
-instance FromJSON DrawAtts where
-  parseJSON = withObject "DrawAtts" $ \v ->
-    DrawAtts . Svg.DrawAttributes <$> (fmap (withObject "" parseJSON))
--}
+instance ToJSON PixelRGBA8 where
+  toJSON (PixelRGBA8 r g b a) = object ["r" .= r, "g" .= g, "b" .= b, "a" .= a]
 
-instance ToJSON Svg.Number where
-  toJSON (Svg.Num x) = object ["Num" .= x]
-  toJSON (Svg.Px x) = object ["Px" .= x]
-  toJSON (Svg.Em x) = object ["Em" .= x]
-  toJSON (Svg.Percent x) = object ["Percent" .= x]
-  toJSON (Svg.Pc x) = object ["Pc" .= x]
-  toJSON (Svg.Mm x) = object ["Mm" .= x]
-  toJSON (Svg.Cm x) = object ["Cm" .= x]
-  toJSON (Svg.Point x) = object ["Point" .= x]
-  toJSON (Svg.Inches x) = object ["Inches" .= x]
-
-instance ToJSON Svg.Texture where
-  toJSON (Svg.ColorRef (PixelRGBA8 r b g a)) = 
-    object
-    [ "r" .= r
-    , "g" .= g
-    , "b" .= b
-    , "a" .= a
-    ]
-  toJSON (Svg.TextureRef s) = 
-    object
-    [ "TextureRef" .= s
-    ]
-  toJSON Svg.FillNone =
-    object
-    [ "FillNone" .= ("FillNone" :: Text)
-    ] 
+instance FromJSON PixelRGBA8 where
+  parseJSON = withObject "Color" $ \v ->
+    PixelRGBA8 <$>
+    v .: "r" <*>
+    v .: "g" <*>
+    v .: "b" <*>
+    v .: "a"
 

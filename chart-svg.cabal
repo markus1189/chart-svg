@@ -39,6 +39,7 @@ library
     , bifunctors
     , box
     , containers
+    , dhall
     , formatting
     , generic-lens
     , javascript-bridge

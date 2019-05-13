@@ -3,6 +3,7 @@ resolver: nightly-2019-03-15
 packages:
   - .
   - ../web-page
+  - ../svg-tree
 
 extra-deps:
   - git: https://github.com/tonyday567/numhask.git
